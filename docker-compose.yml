@@ -1,60 +1,80 @@
-zookeeper:
-  image: jplock/zookeeper
-  restart: always
-  ports:
-    - "2181:2181"
-    - "2888:2888"
-    - "3888:3888"
+version: "2"
 
-mesos-master:
-  image: mesosphere/mesos-master:0.26.0-0.2.145.ubuntu1404
-  restart: always
-  net: "host"
-  environment:
-    - MESOS_HOSTNAME=192.168.99.100
-    - MESOS_IP=192.168.99.100
-    - MESOS_ZK=zk://192.168.99.100:2181/mesos
-    - MESOS_PORT=5050
-    - MESOS_LOG_DIR=/var/log/mesos
-    - MESOS_QUORUM=1
-    - MESOS_REGISTRY=in_memory
-    - MESOS_WORK_DIR=/var/lib/mesos
-  ports:
-    - "5050:5050"
+services:
+  zk:
+    image: bobrik/zookeeper
+    network_mode: host
+    environment:
+      ZK_CONFIG: tickTime=2000,initLimit=10,syncLimit=5,maxClientCnxns=128,forceSync=no,clientPort=2181
+      ZK_ID: 1
 
-marathon:
-  image: mesosphere/marathon
-  restart: always
-  command: --master zk://192.168.99.100:2181/mesos --zk zk://192.168.99.100:2181/marathon
-  ports:
-    - "8080:8080"
+  master:
+    image: mesosphere/mesos-master:0.27.0-0.2.190.ubuntu1404
+    network_mode: host
+    environment:
+      MESOS_ZK: zk://127.0.0.1:2181/mesos
+      MESOS_QUORUM: 1
+      MESOS_CLUSTER: docker-compose
+      MESOS_HOSTNAME: 192.168.99.100
+      MESOS_REGISTRY: replicated_log # default is in_memory for some reason
+    depends_on:
+      - zk
 
-marathon-lb:
-  image: mesosphere/marathon-lb
-  restart: always
-  command: sse -m http://192.168.99.100:8080 --health-check --group external
-  ports:
-    - "9090:9090"
+  slave-one:
+    image: mesosphere/mesos-slave:0.27.0-0.2.190.ubuntu1404
+    network_mode: host
+    pid: host
+    environment:
+      MESOS_MASTER: zk://127.0.0.1:2181/mesos
+      MESOS_CONTAINERIZERS: docker,mesos
+      MESOS_HOSTNAME: 192.168.99.100
+      MESOS_PORT: 5051
+      MESOS_RESOURCES: ports(*):[11000-11999]
+    volumes:
+      - /sys/fs/cgroup:/sys/fs/cgroup
+      - /usr/local/bin/docker:/usr/bin/docker
+      - /var/run/docker.sock:/var/run/docker.sock
+    depends_on:
+      - zk
 
-chronos:
-  image: mesosphere/chronos
-  restart: always
-  command: /usr/bin/chronos --http_port 8081 --master zk://192.168.99.100:2181/mesos --zk_hosts 192.168.99.100:2181
-  ports:
-    - "8081:8081"
+  slave-two:
+    image: mesosphere/mesos-slave:0.27.0-0.2.190.ubuntu1404
+    network_mode: host
+    pid: host
+    environment:
+      MESOS_MASTER: zk://127.0.0.1:2181/mesos
+      MESOS_CONTAINERIZERS: docker,mesos
+      MESOS_HOSTNAME: 192.168.99.100
+      MESOS_PORT: 5052
+      MESOS_RESOURCES: ports(*):[12000-12999]
+    volumes:
+      - /sys/fs/cgroup:/sys/fs/cgroup
+      - /usr/local/bin/docker:/usr/bin/docker
+      - /var/run/docker.sock:/var/run/docker.sock
+    depends_on:
+      - zk
 
-mesos-slave:
-  image: mesosphere/mesos-slave:0.26.0-0.2.145.ubuntu1404
-  restart: always
-  privileged: true
-  net: "host"
-  environment:
-    - MESOS_HOSTNAME=192.168.99.100
-    - MESOS_MASTER=zk://192.168.99.100:2181/mesos
-    - MESOS_LOG_DIR=/var/log/mesos
-    - MESOS_LOGGING_LEVEL=INFO
-    - MESOS_CONTAINERIZERS=mesos
-  volumes:
-    - /var/run/docker.sock:/var/run/docker.sock
-  ports:
-    - "5051:5051"
+  marathon:
+    image: mesosphere/marathon:v0.15.3
+    network_mode: host
+    environment:
+      MARATHON_MASTER: zk://127.0.0.1:2181/mesos
+    depends_on:
+      - zk
+
+  chronos:
+    image: mesosphere/chronos:chronos-2.4.0-0.1.20151007110204.ubuntu1404-mesos-0.24.1-0.2.35.ubuntu1404
+    command: /usr/bin/chronos run_jar --http_port 8888 --master zk://127.0.0.1:2181/mesos --zk_hosts zk://127.0.0.1:2181/mesos
+    network_mode: host
+    depends_on:
+      - zk
+  marathon-lb:
+    image: mesosphere/marathon-lb
+    environment:
+      PORTS: 22000,22001,22002
+    command: sse --marathon http://192.168.99.100:8080 --haproxy-config /marathon-lb/haproxy.cfg --group external
+    ports:
+      - "22000-22020:22000-22020"
+      - 80:80
+      - 443:443
+      - 9090:9090
