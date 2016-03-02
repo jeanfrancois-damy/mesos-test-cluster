@@ -71,7 +71,7 @@ services:
   marathon-lb:
     image: mesosphere/marathon-lb
     environment:
-      PORTS: 22000,22001,22002
+      PORTS: 22000:22020
     command: sse --marathon http://192.168.99.100:8080 --haproxy-config /marathon-lb/haproxy.cfg --group external
     ports:
       - "22000-22020:22000-22020"
