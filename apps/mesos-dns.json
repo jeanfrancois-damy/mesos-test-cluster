@@ -1,0 +1,23 @@
+{
+    "args": [
+        "/mesos-dns",
+        "-config=/config.json"
+    ],
+    "container": {
+        "docker": {
+            "image": "mesosphere/mesos-dns",
+            "network": "HOST"
+        },
+        "type": "DOCKER",
+        "volumes": [
+            {
+                "containerPath": "/config.json",
+                "hostPath": "/etc/mesos-dns/config.js",
+                "mode": "RO"
+            }
+        ]
+    },
+    "cpus": 0.1,
+    "id": "mesos-dns",
+    "instances": 1,
+}
