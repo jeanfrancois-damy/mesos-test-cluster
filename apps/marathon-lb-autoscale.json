@@ -1,10 +1,11 @@
 {
   "id": "marathon-lb-autoscale",
   "args":[
-    "--marathon", "http://leader.mesos:8080",
-    "--haproxy", "http://marathon-lb.marathon.mesos:9090",
-    "--target-rps", "100",
-    "--apps", "nginx_10000"
+    "--marathon", "http://192.168.64.2:8080",
+    "--haproxy", "http://192.168.64.2:9090",
+    "--apps", "nginx_10000",
+    "--target-rps", "300",
+    "--interval", "5"
   ],
   "cpus": 0.1,
   "mem": 16.0,
@@ -12,7 +13,7 @@
   "container": {
     "type": "DOCKER",
     "docker": {
-      "image": "brndnmtthws/marathon-lb-autoscale",
+      "image": "mesosphere/marathon-lb-autoscale",
       "network": "HOST",
       "forcePullImage": true
     }
