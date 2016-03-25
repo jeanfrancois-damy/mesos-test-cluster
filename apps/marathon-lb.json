@@ -126,10 +126,11 @@
         "volumes": [],
         "docker": {
             "image": "mesosphere/marathon-lb",
-            "network": "HOST",
+            "network": "BRIDGE",
             "privileged": false,
             "parameters": [],
-            "forcePullImage": false
+            "forcePullImage": false,
+            "net": "mesosphere"
         },
         "cmd": "touch /marathon-lb/haproxy.cfg"
     }

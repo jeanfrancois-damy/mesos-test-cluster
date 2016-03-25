@@ -18,6 +18,7 @@
         ]
     },
     "cpus": 0.1,
+    "mem": 16.0,
     "id": "mesos-dns",
-    "instances": 1,
+    "instances": 1
 }
